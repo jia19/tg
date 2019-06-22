@@ -15,15 +15,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
-
+/**
+ * 
+ * Read db configuration files and set up db connection
+ *
+ */
 @Singleton
 @Startup
 public class DBConnection {
 
-
-    /**
-	 * 
-	 */
 	private static MongoClient mongoClient;
     private static Datastore datastore;
 

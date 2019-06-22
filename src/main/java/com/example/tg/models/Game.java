@@ -9,12 +9,23 @@ import org.mongodb.morphia.annotations.Embedded;
 import org.mongodb.morphia.annotations.Entity;
 import org.mongodb.morphia.annotations.Id;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonView;
 import com.gamerefinery.saas.topgrossing.model.Rank;
 
-
+/**
+ *Entity class for games collection 
+ *
+ *
+ */
 @Entity(value= "games", noClassnameStored = true)
-
+//@JsonIgnoreProperties(value = { "appGenreDhistories", "appGenreDranks", "appGenreHistories", "appGenreRanks", "appGenres", "appGenreSdranks", "appGenreSranks",
+//		"artist", "released", "rank", "rankMonth", "rankWeek", "rankYesterday", "drank", "drankMonth", "drankWeek", "drankYesterday",
+//		"genredId", "genre", "subGenre", "subGenreId", "genreDataModified", "genreDownloadDataModified"})
 public class Game {
+	@JsonIgnore
 	@Id
     ObjectId id;
 	
@@ -36,8 +47,9 @@ public class Game {
 	@Embedded
 	private Map<Integer, Integer> appGenreSranks;
 //	
+	@JsonView(GameView.TopView.class)
 	private long appId;
-	
+	@JsonView(GameView.TopView.class)
 	private String name;
 	private String artist;
 	private Date released;
@@ -95,7 +107,7 @@ public class Game {
 //	private double gps;
 	private String type;
 	
-	//??
+	
 	private int genredId;
 	private String genre;
 	private String subGenre;

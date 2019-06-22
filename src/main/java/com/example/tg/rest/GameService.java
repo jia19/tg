@@ -22,10 +22,17 @@ import org.mongodb.morphia.query.UpdateOperations;
 
 import com.example.tg.connection.DBConnection;
 import com.example.tg.models.Game;
+import com.example.tg.models.GameView;
+import com.fasterxml.jackson.annotation.JsonView;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.MapperFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 
 
- /*
-  * Note Resteasy doesn't support CDI directly.
+ /**
+  * Rest service class
+  * Note: Resteasy doesn't support CDI directly.
   */
 @Path("/games")
 @RequestScoped
@@ -41,74 +48,102 @@ public class GameService {
 				.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, HEAD").entity("").build();
 	}
 
-//	@GET
-//	@Path("/list")
-//	@Produces(MediaType.APPLICATION_JSON)
-//	public List<Game> listAll() {
-//		return DBConnection.getDatastore().createQuery(Game.class).asList(); 
-//	}
-//	
 	/**
      * Get Games has entered top list for a given market
+     * Note: Use JsonView to avoid flushing data
      * @param game
      * @return
      */
     @PUT
 	@Consumes(MediaType.APPLICATION_JSON)
-	@Produces(MediaType.APPLICATION_JSON)
+	//@Produces(MediaType.APPLICATION_JSON)
     @Path("/topHistory/{top}")
-	public  List<Game>  listTopGamesInHistory(@PathParam("top") int top, Game game) {
+	public  String  listTopGamesInHistory(@PathParam("top") int top, Game game) {
     	List<Game> list = null;
+    	String queryField = null;
+		
     	switch(top) {
     	case 10:
-    		list = DBConnection.getDatastore().createQuery(Game.class).field("market").equal(game.getMarket())
-        			.field("top10Entry").greaterThan(0).asList();
+    		queryField = "top10Entry";
+    		
     		break;
     	case 20:
-    		list = DBConnection.getDatastore().createQuery(Game.class).field("market").equal(game.getMarket())
-			.field("top20Entry").greaterThan(0).asList();
+    		queryField = "top20Entry";
     		break;
     	case 50:
-    		list = DBConnection.getDatastore().createQuery(Game.class).field("market").equal(game.getMarket())
-			.field("top50Entry").greaterThan(0).asList();
+    		queryField = "top50Entry";
     		break;
     	case 100:
-    		list = DBConnection.getDatastore().createQuery(Game.class).field("market").equal(game.getMarket())
-			.field("top100Entry").greaterThan(0).asList();
+    		queryField = "top100Entry";
     		break;
     	case 200:
-    		list = DBConnection.getDatastore().createQuery(Game.class).field("market").equal(game.getMarket())
-			.field("top200Entry").greaterThan(0).asList();
+    		queryField = "top200Entry";
     		break;
     	default:
     		break;
     	}
-    	return list;
+    	
+         try {
+        	 if(queryField != null)
+        		 list = DBConnection.getDatastore().createQuery(Game.class).field("market").equal(game.getMarket())
+     			.field(queryField).notEqual(0).asList();
+     	
+        	 	ObjectMapper mapper = new ObjectMapper();
+        	 	mapper.disable(MapperFeature.DEFAULT_VIEW_INCLUSION);
+        		return  mapper.writerWithView(GameView.TopView.class).writeValueAsString(list);
+		} catch (JsonProcessingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+    	return null;
 
 	}
     
-	 
+	 /**
+	  * List all games has being in top list for a given days
+	  * Note: Use JsonView to avoid flushing data
+	  * @param top 
+	  * @param days
+	  * @param game
+	  * @return
+	  */
     @PUT
-	@Produces(MediaType.APPLICATION_JSON)
+	//@Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
     @Path("/topGamesForDays/{top}/{days}")
-	public  List<Game>  listTopGames(@PathParam("top") int top, @PathParam("days") int days, Game game) {
+	public  String  listTopGames(@PathParam("top") int top, @PathParam("days") int days, Game game) {
+    	List<Game> list = null;
     	long entry = Calendar.getInstance().getTimeInMillis() - 24 * 3600 *1000;
     	
-    	Query<Game> query =  DBConnection.getDatastore().createQuery(Game.class).field("market").equal(game.getMarket());
+    	String queryField = null;
 		
     	if(top == 10)
-	    	 return query.field("top10Entry").greaterThan(entry).field("top10Exit").lessThanOrEq(0).asList();
+    		queryField = "top10Entry";
+	    	 
 	    if(top ==20)
-    		return DBConnection.getDatastore().createQuery(Game.class).field("market").equal(game.getMarket())
-	    			.field("top20Entry").greaterThan(entry).field("top20Exit").lessThanOrEq(0).asList();
+	    	queryField = "top20Entry";
 	    			
     	else if(top ==50)
-    		return DBConnection.getDatastore().createQuery(Game.class).field("market").equal(game.getMarket())
-	    			.field("top50Entry").greaterThan(entry).field("top50Exit").lessThanOrEq(0).asList();
-	    		
-    	else
-    		return null;
+    		queryField = "top50Entry";   
+
+        try {
+       	 if(queryField != null)
+       		 list = DBConnection.getDatastore().createQuery(Game.class).field("market").equal(game.getMarket())
+	    		.field(queryField).greaterThan(0)
+	    		.field(queryField).lessThanOrEq(entry)
+	    		.field("top10Exit").equal(0).asList();
+       	 	if(list != null) {
+       	 		ObjectMapper mapper = new ObjectMapper();
+       	 		mapper.disable(MapperFeature.DEFAULT_VIEW_INCLUSION);
+           		return  mapper.writerWithView(GameView.TopView.class).writeValueAsString(list);
+       	 	}
+	 	
+		} catch (JsonProcessingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+    	
+    	return null;
 	}
 
 	@PUT
@@ -116,12 +151,13 @@ public class GameService {
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
 	public Game markFavourite(Game game) {
-		Query<Game> query =  DBConnection.getDatastore().createQuery(Game.class).field("appId").equal(game.getAppId());
+		Query<Game> query =  DBConnection.getDatastore().createQuery(Game.class).field("gameId").equal(game.getGameId())
+				.field("market").equal(game.getMarket());
 		UpdateOperations<Game> ops = DBConnection.getDatastore().createUpdateOperations(Game.class).set("favorite", game.isFavorite());
 		if(query.get() != null) {
 			DBConnection.getDatastore().update(query, ops);
 		
-			return DBConnection.getDatastore().createQuery(Game.class).field("appId").equal(game.getAppId()).get();
+			return DBConnection.getDatastore().createQuery(Game.class).field("gameId").equal(game.getGameId()).get();
 		}else
 			return null;
 	}
@@ -131,7 +167,7 @@ public class GameService {
     @Consumes(MediaType.APPLICATION_JSON)
     @Path("/rankHistory/{category}")
 	public  Object listRankHistory(@PathParam("category") String category,Game game) {
- 		Query<Game> query = DBConnection.getDatastore().createQuery(Game.class).field("appId").equal(game.getAppId())
+ 		Query<Game> query = DBConnection.getDatastore().createQuery(Game.class).field("gameId").equal(game.getGameId())
  				.field("market").equal(game.getMarket());
  		Game found = (Game)query.get();
  		Object history = null;
